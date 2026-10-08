@@ -4,18 +4,32 @@ import { CartProvider } from "./context/CartContext";
 import { WishlistProvider } from "./context/WishlistContext";
 import { NotificationProvider } from "./context/NotificationContext";
 
-import Home from "./pages/Home";
-import Products from "./pages/Products";
-import ProductDetails from "./pages/ProductDetails";
-import Cart from "./pages/Cart";
+// =====================================================
+// MAIN PAGES
+// =====================================================
+
+import Home from "./pages/home";
+import Products from "./pages/products";
+import ProductDetails from "./pages/productDetails";
+import Cart from "./pages/cart";
 import Checkout from "./pages/Checkout";
 import Orders from "./pages/Orders";
 import Profile from "./pages/profile";
-import Wishlist from "./pages/Wishlist";
+import Wishlist from "./pages/wishlist";
 import Notifications from "./pages/Notifications";
-import Login from "./pages/Login";
-import Register from "./pages/Register";
-import AdminDashboard from "./pages/AdminDashboard";
+
+// =====================================================
+// AUTH PAGES
+// =====================================================
+
+import Login from "./pages/login";
+import Register from "./pages/register";
+
+// =====================================================
+// ADMIN
+// =====================================================
+
+import AdminDashboard from "./pages/adminDashboard";
 
 // =====================================================
 // PAYMENT PAGES
