@@ -1,7 +1,13 @@
+
 import axios from "axios";
 
+// Use the Railway backend in production and localhost in development.
+const API_BASE_URL = (
+  import.meta.env.VITE_API_URL || "http://localhost:5000"
+).replace(/\/+$/, "");
+
 const api = axios.create({
-  baseURL: "http://localhost:5000/api",
+  baseURL: `${API_BASE_URL}/api`,
 
   headers: {
     Accept: "application/json",
