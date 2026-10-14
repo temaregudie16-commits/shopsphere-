@@ -1,5 +1,6 @@
 const express = require("express");
 const path = require("path");
+const fs = require("fs");
 const cors = require("cors");
 const helmet = require("helmet");
 const morgan = require("morgan");
@@ -34,6 +35,9 @@ const paymentRoutes = require("./routes/paymentRoutes");
 
 const app = express();
 
+// Use an absolute path for uploaded product images.
+const UPLOADS_DIR = path.resolve(__dirname, "uploads");
+
 // =====================================================
 // CORS — NETLIFY + LOCAL DEVELOPMENT
 // =====================================================
@@ -46,18 +50,17 @@ const allowedOrigins = [
 
 const corsOptions = {
   origin: (origin, callback) => {
-    // Allow requests without an Origin header, such as server-to-server
-    // requests and some direct API testing tools.
+    // Allow requests without an Origin header.
     if (!origin) {
       return callback(null, true);
     }
 
     if (allowedOrigins.includes(origin)) {
-      console.log("✅ CORS ALLOWED:", origin);
+      console.log("CORS ALLOWED:", origin);
       return callback(null, true);
     }
 
-    console.log("❌ CORS BLOCKED:", origin);
+    console.log("CORS BLOCKED:", origin);
     return callback(new Error("CORS blocked"));
   },
 
@@ -73,7 +76,7 @@ const corsOptions = {
   ],
 };
 
-// Register CORS before security middleware and API routes.
+// Register CORS before API routes.
 app.use(cors(corsOptions));
 
 // =====================================================
@@ -116,10 +119,25 @@ app.use(
 app.use(cookieParser());
 
 // =====================================================
-// STATIC UPLOADS
+// STATIC PRODUCT IMAGES / UPLOADS
 // =====================================================
 
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+// Log whether the upload directory exists on the server.
+console.log("UPLOADS DIRECTORY:", UPLOADS_DIR);
+console.log("UPLOADS DIRECTORY EXISTS:", fs.existsSync(UPLOADS_DIR));
+
+// Serve files from server/uploads at /uploads/filename.
+app.use(
+  "/uploads",
+  express.static(UPLOADS_DIR, {
+    dotfiles: "deny",
+    index: false,
+    fallthrough: true,
+    setHeaders: (res) => {
+      res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+    },
+  }),
+);
 
 // =====================================================
 // API ROUTES
@@ -185,20 +203,18 @@ app.get("/api/profile", protect, async (req, res) => {
       dbUser.image ||
       null;
 
-    const profileUser = {
-      id: dbUser.id,
-      name: dbUser.name || "",
-      email: dbUser.email || "",
-      role: dbUser.role || "user",
-      profile_image: profileImage,
-      created_at: dbUser.created_at || null,
-      updated_at: dbUser.updated_at || null,
-    };
-
     return res.json({
       success: true,
       message: "Profile loaded successfully.",
-      user: profileUser,
+      user: {
+        id: dbUser.id,
+        name: dbUser.name || "",
+        email: dbUser.email || "",
+        role: dbUser.role || "user",
+        profile_image: profileImage,
+        created_at: dbUser.created_at || null,
+        updated_at: dbUser.updated_at || null,
+      },
     });
   } catch (error) {
     console.error("PROFILE API ERROR:", error);
@@ -217,7 +233,7 @@ app.get("/api/profile", protect, async (req, res) => {
 app.get("/", (req, res) => {
   res.json({
     success: true,
-    message: "Welcome to ShopSphere API 🚀",
+    message: "Welcome to ShopSphere API",
   });
 });
 
@@ -230,12 +246,13 @@ app.get("/api/health", (req, res) => {
     success: true,
     message: "ShopSphere backend is running",
     server: "Railway",
+    uploadsDirectoryExists: fs.existsSync(UPLOADS_DIR),
     time: new Date().toISOString(),
   });
 });
 
 // =====================================================
-// 404
+// 404 — UNKNOWN ROUTES
 // =====================================================
 
 app.use((req, res) => {
@@ -252,6 +269,10 @@ app.use((req, res) => {
 
 app.use((error, req, res, next) => {
   console.error("GLOBAL ERROR:", error);
+
+  if (res.headersSent) {
+    return next(error);
+  }
 
   if (error.message === "CORS blocked") {
     return res.status(403).json({
@@ -280,6 +301,7 @@ app.use((error, req, res, next) => {
 console.log("=================================");
 console.log("ShopSphere app.js loaded");
 console.log("Allowed frontend origins:", allowedOrigins);
+console.log("Uploads directory:", UPLOADS_DIR);
 console.log("PRODUCT ROUTE: /api/products");
 console.log("CATEGORY ROUTE: /api/categories");
 console.log("COUPON ROUTE: /api/coupons");
