@@ -2,8 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import api from "../services/api";
 
-const SERVER_URL = "http://localhost:5000";
-
+const SERVER_URL = "https://shopsphere-temare.up.railway.app";
 // ============================================================
 // HOME BACKGROUND IMAGE
 // client/public/images/ecommerce-hero.jpg
