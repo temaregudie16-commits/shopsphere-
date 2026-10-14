@@ -30,13 +30,13 @@ const usersRoutes = require("./routes/usersRoutes");
 const paymentRoutes = require("./routes/paymentRoutes");
 
 // =====================================================
-// APP
+// APP CONFIGURATION
 // =====================================================
 
 const app = express();
 
-// Use an absolute path for uploaded product images.
 const UPLOADS_DIR = path.resolve(__dirname, "uploads");
+const TEST_IMAGE = "1789758646424-663873384.webp";
 
 // =====================================================
 // CORS — NETLIFY + LOCAL DEVELOPMENT
@@ -50,7 +50,6 @@ const allowedOrigins = [
 
 const corsOptions = {
   origin: (origin, callback) => {
-    // Allow requests without an Origin header.
     if (!origin) {
       return callback(null, true);
     }
@@ -76,7 +75,6 @@ const corsOptions = {
   ],
 };
 
-// Register CORS before API routes.
 app.use(cors(corsOptions));
 
 // =====================================================
@@ -96,7 +94,7 @@ app.use(
 app.use(morgan("dev"));
 
 // =====================================================
-// BODY PARSER
+// BODY PARSERS
 // =====================================================
 
 app.use(
@@ -113,20 +111,32 @@ app.use(
 );
 
 // =====================================================
-// COOKIE
+// COOKIE PARSER
 // =====================================================
 
 app.use(cookieParser());
 
 // =====================================================
+// UPLOAD DIRECTORY DIAGNOSTICS
+// =====================================================
+
+console.log("=================================");
+console.log("ShopSphere app.js loaded");
+console.log("UPLOADS DIRECTORY:", UPLOADS_DIR);
+console.log("UPLOADS DIRECTORY EXISTS:", fs.existsSync(UPLOADS_DIR));
+console.log(
+  "TEST IMAGE EXISTS:",
+  fs.existsSync(path.join(UPLOADS_DIR, TEST_IMAGE)),
+);
+console.log("=================================");
+
+// =====================================================
 // STATIC PRODUCT IMAGES / UPLOADS
 // =====================================================
 
-// Log whether the upload directory exists on the server.
-console.log("UPLOADS DIRECTORY:", UPLOADS_DIR);
-console.log("UPLOADS DIRECTORY EXISTS:", fs.existsSync(UPLOADS_DIR));
+// Files in server/uploads are served at /uploads/filename.
+// This middleware must be registered before the 404 handler.
 
-// Serve files from server/uploads at /uploads/filename.
 app.use(
   "/uploads",
   express.static(UPLOADS_DIR, {
@@ -135,6 +145,8 @@ app.use(
     fallthrough: true,
     setHeaders: (res) => {
       res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+
+      res.setHeader("Cache-Control", "public, max-age=3600");
     },
   }),
 );
@@ -227,6 +239,44 @@ app.get("/api/profile", protect, async (req, res) => {
 });
 
 // =====================================================
+// HEALTH CHECK
+// =====================================================
+
+app.get("/api/health", (req, res) => {
+  res.json({
+    success: true,
+    message: "ShopSphere backend is running",
+    server: "Railway",
+    uploadsDirectory: UPLOADS_DIR,
+    uploadsDirectoryExists: fs.existsSync(UPLOADS_DIR),
+    testImageExists: fs.existsSync(path.join(UPLOADS_DIR, TEST_IMAGE)),
+    time: new Date().toISOString(),
+  });
+});
+
+// =====================================================
+// TEMPORARY UPLOAD DEBUG ENDPOINT
+// =====================================================
+
+// Use this endpoint to check whether the file exists on Railway.
+// Remove this endpoint after troubleshooting.
+
+app.get("/api/debug/upload-check", (req, res) => {
+  const filename = TEST_IMAGE;
+  const filePath = path.join(UPLOADS_DIR, filename);
+
+  res.json({
+    uploadsDirectory: UPLOADS_DIR,
+    uploadsDirectoryExists: fs.existsSync(UPLOADS_DIR),
+    testFilename: filename,
+    testImageExists: fs.existsSync(filePath),
+    testImageUrl:
+      "https://shopsphere-temare.up.railway.app/uploads/" +
+      encodeURIComponent(filename),
+  });
+});
+
+// =====================================================
 // HOME
 // =====================================================
 
@@ -238,21 +288,7 @@ app.get("/", (req, res) => {
 });
 
 // =====================================================
-// HEALTH CHECK
-// =====================================================
-
-app.get("/api/health", (req, res) => {
-  res.json({
-    success: true,
-    message: "ShopSphere backend is running",
-    server: "Railway",
-    uploadsDirectoryExists: fs.existsSync(UPLOADS_DIR),
-    time: new Date().toISOString(),
-  });
-});
-
-// =====================================================
-// 404 — UNKNOWN ROUTES
+// 404 HANDLER
 // =====================================================
 
 app.use((req, res) => {
@@ -293,25 +329,6 @@ app.use((error, req, res, next) => {
     message: error.message || "Internal Server Error",
   });
 });
-
-// =====================================================
-// DEBUG
-// =====================================================
-
-console.log("=================================");
-console.log("ShopSphere app.js loaded");
-console.log("Allowed frontend origins:", allowedOrigins);
-console.log("Uploads directory:", UPLOADS_DIR);
-console.log("PRODUCT ROUTE: /api/products");
-console.log("CATEGORY ROUTE: /api/categories");
-console.log("COUPON ROUTE: /api/coupons");
-console.log("REVIEW ROUTE: /api/reviews");
-console.log("WISHLIST ROUTE: /api/wishlist");
-console.log("NOTIFICATION ROUTE: /api/notifications");
-console.log("USERS ROUTE: /api/users");
-console.log("PAYMENT ROUTE: /api/payments");
-console.log("PROFILE ROUTE: /api/profile");
-console.log("=================================");
 
 // =====================================================
 // EXPORT
