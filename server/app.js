@@ -22,20 +22,10 @@ const orderRoutes = require("./routes/orderRoutes");
 const categoryRoutes = require("./routes/categoryRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 const couponRoutes = require("./routes/couponRoutes");
-
-// Reviews & Ratings
 const reviewRoutes = require("./routes/reviewRoutes");
-
-// Wishlist
 const wishlistRoutes = require("./routes/wishlistRoutes");
-
-// Notifications
 const notificationRoutes = require("./routes/notificationRoutes");
-
-// Users / Customers / Admins
 const usersRoutes = require("./routes/usersRoutes");
-
-// Payments / Chapa
 const paymentRoutes = require("./routes/paymentRoutes");
 
 // =====================================================
@@ -45,43 +35,46 @@ const paymentRoutes = require("./routes/paymentRoutes");
 const app = express();
 
 // =====================================================
-// CORS
+// CORS — NETLIFY + LOCAL DEVELOPMENT
 // =====================================================
 
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      // Postman / direct requests
-      if (!origin) {
-        return callback(null, true);
-      }
+const allowedOrigins = [
+  "https://temare-shopsphere.netlify.app",
+  "http://localhost:5173",
+  "http://localhost:3000",
+];
 
-      // Development: allow localhost on any port
-      if (
-        /^http:\/\/localhost:\d+$/.test(origin) ||
-        /^http:\/\/127\.0\.0\.1:\d+$/.test(origin)
-      ) {
-        console.log("✅ CORS ALLOWED:", origin);
-        return callback(null, true);
-      }
+const corsOptions = {
+  origin: (origin, callback) => {
+    // Allow requests without an Origin header, such as server-to-server
+    // requests and some direct API testing tools.
+    if (!origin) {
+      return callback(null, true);
+    }
 
-      console.log("❌ CORS BLOCKED:", origin);
+    if (allowedOrigins.includes(origin)) {
+      console.log("✅ CORS ALLOWED:", origin);
+      return callback(null, true);
+    }
 
-      return callback(new Error("CORS blocked"));
-    },
+    console.log("❌ CORS BLOCKED:", origin);
+    return callback(new Error("CORS blocked"));
+  },
 
-    credentials: true,
+  credentials: true,
 
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
 
-    allowedHeaders: [
-      "Content-Type",
-      "Authorization",
-      "Accept",
-      "X-Requested-With",
-    ],
-  }),
-);
+  allowedHeaders: [
+    "Content-Type",
+    "Authorization",
+    "Accept",
+    "X-Requested-With",
+  ],
+};
+
+// Register CORS before security middleware and API routes.
+app.use(cors(corsOptions));
 
 // =====================================================
 // SECURITY
@@ -126,47 +119,23 @@ app.use(cookieParser());
 // STATIC UPLOADS
 // =====================================================
 
-// Product images / profile images / other uploads
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // =====================================================
 // API ROUTES
 // =====================================================
 
-// Authentication
 app.use("/api/auth", authRoutes);
-
-// Products
 app.use("/api/products", productRoutes);
-
-// Cart
 app.use("/api/cart", cartRoutes);
-
-// Orders
 app.use("/api/orders", orderRoutes);
-
-// Categories
 app.use("/api/categories", categoryRoutes);
-
-// Admin
 app.use("/api/admin", adminRoutes);
-
-// Coupons
 app.use("/api/coupons", couponRoutes);
-
-// Reviews & Ratings
 app.use("/api/reviews", reviewRoutes);
-
-// Wishlist
 app.use("/api/wishlist", wishlistRoutes);
-
-// Notifications
 app.use("/api/notifications", notificationRoutes);
-
-// Users / Customers / Admins
 app.use("/api/users", usersRoutes);
-
-// Payments / Chapa
 app.use("/api/payments", paymentRoutes);
 
 // =====================================================
@@ -179,7 +148,6 @@ const protect = require("./middleware/authMiddleware");
 // PROFILE
 // =====================================================
 
-// ✅ Returns the real database user instead of JWT payload only
 app.get("/api/profile", protect, async (req, res) => {
   try {
     const userId = Number(req.user?.id);
@@ -191,8 +159,6 @@ app.get("/api/profile", protect, async (req, res) => {
       });
     }
 
-    // Get the complete user row from database.
-    // SELECT * keeps this compatible with the existing users table.
     const [rows] = await pool.query(
       `
         SELECT *
@@ -212,7 +178,6 @@ app.get("/api/profile", protect, async (req, res) => {
 
     const dbUser = rows[0];
 
-    // Try the common profile-image field names.
     const profileImage =
       dbUser.profile_image ||
       dbUser.profile_photo ||
@@ -220,7 +185,6 @@ app.get("/api/profile", protect, async (req, res) => {
       dbUser.image ||
       null;
 
-    // Keep the response clean and frontend-friendly.
     const profileUser = {
       id: dbUser.id,
       name: dbUser.name || "",
@@ -237,10 +201,7 @@ app.get("/api/profile", protect, async (req, res) => {
       user: profileUser,
     });
   } catch (error) {
-    console.error("=================================");
-    console.error("PROFILE API ERROR");
-    console.error("=================================");
-    console.error(error);
+    console.error("PROFILE API ERROR:", error);
 
     return res.status(500).json({
       success: false,
@@ -268,7 +229,7 @@ app.get("/api/health", (req, res) => {
   res.json({
     success: true,
     message: "ShopSphere backend is running",
-    server: "localhost:5000",
+    server: "Railway",
     time: new Date().toISOString(),
   });
 });
@@ -290,14 +251,7 @@ app.use((req, res) => {
 // =====================================================
 
 app.use((error, req, res, next) => {
-  console.error("=================================");
-  console.error("GLOBAL ERROR");
-  console.error("=================================");
-  console.error(error);
-
-  // -----------------------------
-  // CORS ERROR
-  // -----------------------------
+  console.error("GLOBAL ERROR:", error);
 
   if (error.message === "CORS blocked") {
     return res.status(403).json({
@@ -306,20 +260,12 @@ app.use((error, req, res, next) => {
     });
   }
 
-  // -----------------------------
-  // MULTER ERROR
-  // -----------------------------
-
   if (error.code === "LIMIT_FILE_SIZE") {
     return res.status(400).json({
       success: false,
       message: "Uploaded file is too large.",
     });
   }
-
-  // -----------------------------
-  // GENERAL ERROR
-  // -----------------------------
 
   return res.status(error.status || 500).json({
     success: false,
@@ -333,7 +279,9 @@ app.use((error, req, res, next) => {
 
 console.log("=================================");
 console.log("ShopSphere app.js loaded");
-console.log("APP TYPE:", typeof app);
+console.log("Allowed frontend origins:", allowedOrigins);
+console.log("PRODUCT ROUTE: /api/products");
+console.log("CATEGORY ROUTE: /api/categories");
 console.log("COUPON ROUTE: /api/coupons");
 console.log("REVIEW ROUTE: /api/reviews");
 console.log("WISHLIST ROUTE: /api/wishlist");
